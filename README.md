@@ -1,4 +1,4 @@
-# ELApharma — Pharmacy Management System
+# pharmacies system — Pharmacy Management System
 
 A full-stack web application built with **Laravel 13** that provides a centralised platform for managing pharmacies, drug inventory, orders, and invoicing. The system supports two distinct user roles — **Admin** and **Supervisor** — each with a dedicated portal and a parallel RESTful API layer secured with Laravel Sanctum.
 
