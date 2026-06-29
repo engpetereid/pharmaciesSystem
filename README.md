@@ -14,7 +14,7 @@ A full-stack web application built with **Laravel 13** that provides a centralis
 - [Project Structure](#project-structure)
 - [API Documentation](#api-documentation)
 - [Database Design](#database-design)
-- [Architecture Notes](#architecture-notes)
+- [Architecture & Design Patterns](#architecture--design-patterns)
 - [Future Improvements](#future-improvements)
 - [License](#license)
 
@@ -152,6 +152,16 @@ php artisan test
 ```
 ELApharma/
 ├── app/
+│   ├── DTOs/                           # Data Transfer Objects (one per entity)
+│   │   ├── SaveCategoryDTO.php
+│   │   ├── SaveDrugDTO.php
+│   │   ├── SaveInvoiceDTO.php
+│   │   ├── SaveInvoiceItemDTO.php
+│   │   ├── SaveNotificationDTO.php
+│   │   ├── SaveOrderDTO.php
+│   │   ├── SavePharmaDTO.php
+│   │   ├── SaveUserDTO.php
+│   │   └── SaveWarehouseDTO.php
 │   ├── Http/
 │   │   ├── Controllers/
 │   │   │   ├── Admin/          # Web controllers for admin panel
@@ -171,17 +181,53 @@ ELApharma/
 │   │   ├── InvoiceItem.php     # Single line item on an invoice
 │   │   ├── Warehouse.php       # Stock record per pharmacy+drug
 │   │   └── StockNotification.php # Low-stock alert (maps to 'notifications' table)
+│   ├── Providers/
+│   │   └── AppServiceProvider.php  # IoC bindings: interfaces → implementations
+│   ├── Repositories/               # Repository contracts (interfaces)
+│   │   ├── ICategoryRepository.php
+│   │   ├── IDrugRepository.php
+│   │   ├── IInvoiceRepository.php
+│   │   ├── IInvoiceItemRepository.php
+│   │   ├── INotificationRepository.php
+│   │   ├── IOrderRepository.php
+│   │   ├── IPharmaRepository.php
+│   │   ├── IUserRepository.php
+│   │   ├── IWarehouseRepository.php
+│   │   └── Implementation/         # Eloquent implementations of each contract
+│   │       ├── CategoryRepository.php
+│   │       ├── DrugRepository.php
+│   │       ├── InvoiceRepository.php
+│   │       ├── InvoiceItemRepository.php
+│   │       ├── NotificationRepository.php
+│   │       ├── OrderRepository.php
+│   │       ├── PharmaRepository.php
+│   │       ├── UserRepository.php
+│   │       └── WarehouseRepository.php
 │   └── Services/
-│       ├── Admin/              # Business logic for admin operations
-│       │   ├── CategoryService.php
-│       │   ├── DrugService.php
-│       │   ├── InvoiceService.php  # Admin invoice CRUD (no stock check)
-│       │   ├── OrderService.php    # accept() runs in DB transaction
-│       │   ├── PharmaService.php
-│       │   └── UserService.php
-│       └── Supervisor/
-│           ├── InvoiceService.php  # Stock-aware invoice create/update/delete
-│           └── WarehouseService.php # Orders and minimum threshold logic
+│       ├── Admin/              # Service contracts + implementations for admin
+│       │   ├── ICategoryService.php
+│       │   ├── IDrugService.php
+│       │   ├── IInvoiceService.php
+│       │   ├── INotificationService.php
+│       │   ├── IOrderService.php
+│       │   ├── IPharmaService.php
+│       │   ├── IUserService.php
+│       │   ├── IWarehouseService.php
+│       │   └── Implementation/
+│       │       ├── CategoryService.php
+│       │       ├── DrugService.php
+│       │       ├── InvoiceService.php  # Admin invoice CRUD (no stock check)
+│       │       ├── NotificationService.php
+│       │       ├── OrderService.php    # accept() runs in DB transaction
+│       │       ├── PharmaService.php
+│       │       ├── UserService.php
+│       │       └── WarehouseService.php
+│       └── Supervisor/         # Service contracts + implementations for supervisor
+│           ├── IInvoiceService.php
+│           ├── IWarehouseService.php
+│           └── Implementation/
+│               ├── InvoiceService.php  # Stock-aware invoice create/update/delete
+│               └── WarehouseService.php # Orders and minimum threshold logic
 ├── database/
 │   ├── migrations/             # 18 versioned schema migrations
 │   └── seeders/
@@ -394,10 +440,117 @@ drugs ── categories
 
 ---
 
-## Architecture Notes
+## Architecture & Design Patterns
 
-### Service Layer Pattern
-Business logic is fully extracted into dedicated service classes (`app/Services/`), keeping controllers thin. Controllers handle only HTTP concerns (request parsing, validation, redirects/responses); all domain operations live in services.
+The codebase follows **SOLID principles** and a layered architecture, separating HTTP, business logic, data access, and data transfer concerns into distinct, independently testable layers.
+
+---
+
+### SOLID Principles Applied
+
+| Principle | How It Is Applied |
+|-----------|-------------------|
+| **S** — Single Responsibility | Controllers only handle HTTP. Services only contain business logic. Repositories only contain data-access queries. DTOs only carry data. |
+| **O** — Open/Closed | All services and repositories are consumed through interfaces, so new implementations can be swapped in (`AppServiceProvider`) without touching consumer code. |
+| **L** — Liskov Substitution | Every concrete repository/service class fully satisfies its interface contract, so they are interchangeable. |
+| **I** — Interface Segregation | Repository and service interfaces are kept narrow and entity-specific (e.g., `ICategoryRepository`, `IOrderService`), not monolithic. |
+| **D** — Dependency Inversion | High-level classes (controllers, services) depend on abstractions (interfaces), not on concrete Eloquent repositories. Laravel's IoC container resolves the bindings at runtime. |
+
+---
+
+### Repository Pattern
+
+All database access is hidden behind repository interfaces (`app/Repositories/I*Repository.php`). Concrete Eloquent implementations live under `app/Repositories/Implementation/`. Services receive a repository interface via constructor injection — they never reference an Eloquent model directly for queries.
+
+```
+Interface (contract)          →  Eloquent Implementation
+─────────────────────────────────────────────────────────
+ICategoryRepository           →  CategoryRepository
+IDrugRepository               →  DrugRepository
+IInvoiceRepository            →  InvoiceRepository
+IInvoiceItemRepository        →  InvoiceItemRepository
+IOrderRepository              →  OrderRepository
+IPharmaRepository             →  PharmaRepository
+IUserRepository               →  UserRepository
+IWarehouseRepository          →  WarehouseRepository
+INotificationRepository       →  NotificationRepository
+```
+
+**Benefit**: swapping the underlying storage (e.g., to an external API or a different ORM) only requires a new implementation class and a one-line change in `AppServiceProvider` — zero changes to service or controller code.
+
+---
+
+### Data Transfer Objects (DTOs)
+
+All data flowing from an HTTP request into a service method is first mapped to a typed, immutable DTO (`app/DTOs/Save*DTO.php`). Each DTO exposes a static `fromRequest()` factory that accepts the validated `FormRequest` and returns a populated DTO.
+
+```php
+// Example: SaveCategoryDTO
+class SaveCategoryDTO
+{
+    public function __construct(
+        public readonly string $name,
+    ) {}
+
+    public static function fromRequest(
+        CreateCategoryRequest|EditCategoryRequest $request
+    ): self {
+        return new self(name: $request->name);
+    }
+}
+```
+
+**Benefits**:
+- Services are decoupled from the HTTP layer — they accept a DTO, not a raw request object.
+- `readonly` properties make DTOs immutable, preventing accidental mutation.
+- Clear, type-safe API boundary between controllers and the domain layer.
+
+| DTO | Purpose |
+|-----|---------|
+| `SaveCategoryDTO` | Create/update a drug category |
+| `SaveDrugDTO` | Create/update a drug |
+| `SaveInvoiceDTO` | Create/update an invoice with its items |
+| `SaveInvoiceItemDTO` | Single line item within an invoice |
+| `SaveOrderDTO` | Place a purchase order |
+| `SavePharmaDTO` | Create/update a pharmacy |
+| `SaveUserDTO` | Create/update a user account |
+| `SaveWarehouseDTO` | Set/update warehouse stock or minimum threshold |
+| `SaveNotificationDTO` | Create a low-stock alert record |
+
+---
+
+### Service Layer & Interface Contracts
+
+Business logic is fully extracted into dedicated service classes (`app/Services/`), each backed by an interface. Controllers receive the interface via constructor injection — the IoC container resolves the concrete class.
+
+```
+Admin services          Supervisor services
+──────────────────      ───────────────────
+ICategoryService        IInvoiceService
+IDrugService            IWarehouseService
+IInvoiceService
+INotificationService
+IOrderService
+IPharmaService
+IUserService
+IWarehouseService
+```
+
+---
+
+### IoC Container Bindings
+
+`AppServiceProvider` is the single place where every interface is bound to its concrete implementation:
+
+```php
+$this->app->bind(ICategoryRepository::class, CategoryRepository::class);
+$this->app->bind(ICategoryService::class,    CategoryService::class);
+// … repeated for all 9 repositories and all service pairs
+```
+
+Changing an implementation is a one-line edit in `AppServiceProvider`; no other file needs to change.
+
+---
 
 ### Dual Service Split (Admin vs. Supervisor)
 Two parallel `InvoiceService` classes exist by design:
@@ -433,6 +586,7 @@ A composite unique index on `warehouses(pharmacy_id, drug_id)` prevents duplicat
 - **Docker / Sail setup** — containerize the stack for easier onboarding and environment parity.
 - **Refresh token strategy** — extend the Sanctum API with token expiry and refresh flows for production use.
 - **Two-factor authentication** — strengthen admin account security.
+- **Unit tests for repositories & services** — now that the repository and service layers are interface-driven, pure unit tests (with mock repositories) can be added without hitting the database.
 
 ---
 
