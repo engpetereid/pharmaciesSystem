@@ -2,23 +2,26 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\SaveDrugDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Drug\CreateDrugRequest;
 use App\Http\Requests\Drug\EditDrugRequest;
-use App\Models\Category;
 use App\Models\Drug;
-use App\Services\Admin\DrugService;
-use Illuminate\Http\Request;
+use App\Services\Admin\IDrugService;
 
 class ApiDrugsController extends Controller
 {
+    public function __construct(
+        protected IDrugService $drugService,
+    ){}
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
         //
-        $drugs=Drug::all();
+        $drugs=$this->drugService->all();
         return response()->json([
             'status'=>true,
             'data'=>$drugs,
@@ -29,10 +32,10 @@ class ApiDrugsController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(CreateDrugRequest $request ,DrugService  $service )
+    public function store(CreateDrugRequest $request)
     {
-
-        $drug= $service->create($request->validated());
+        $dto = SaveDrugDTO::fromRequest($request);
+        $drug= $this->drugService->store($dto);
         return response()->json([
             'status'=>true,
             'data'=>$drug,
@@ -46,7 +49,7 @@ class ApiDrugsController extends Controller
     public function show(string $id)
     {
         //
-        $drug=Drug::findOrFail($id);
+        $drug=$this->drugService->findById($id);
         return response()->json([
             'status'=>true,
             'data'=>$drug,
@@ -56,10 +59,11 @@ class ApiDrugsController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(EditDrugRequest $request, string $id , DrugService  $service)
+    public function update(EditDrugRequest $request, Drug $drug)
     {
         //
-        $drug = $service->update($id,$request->validated());
+        $dto = SaveDrugDTO::fromRequest($request);
+        $drug = $this->drugService->update( $drug,$dto );
         return response()->json([
             'status'=>true,
             'data'=>$drug,
@@ -70,9 +74,9 @@ class ApiDrugsController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id ,DrugService  $service)
+    public function destroy(Drug $drug )
     {
-        $service->delete($id);
+        $this->drugService->delete($drug);
         return response()->json([
             'status' => true,
             'message' => 'drug deleted successfully',

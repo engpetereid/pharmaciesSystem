@@ -7,7 +7,7 @@ use App\Http\Requests\Invoice\CreateInvoiceRequest;
 use App\Http\Requests\Invoice\EditInvoiceRequest;
 use App\Models\Drug;
 use App\Models\Invoice;
-use App\Services\Supervisor\InvoiceService;
+use App\Services\Supervisor\implemantation\InvoiceService;
 
 class SupervisorInvoiceController extends Controller
 {

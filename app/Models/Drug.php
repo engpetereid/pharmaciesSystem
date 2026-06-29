@@ -12,6 +12,7 @@ class Drug extends Model
     use HasFactory;
 
     protected $fillable = [
+        'id',
         'name',
         'price',
         'category_id',

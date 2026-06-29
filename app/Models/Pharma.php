@@ -23,13 +23,6 @@ class Pharma extends Model
         'user_id',
     ];
 
-    /**
-     * The user (supervisor) who owns this pharmacy.
-     *
-     * Fix: was incorrectly declared as hasOne (which queries the USERS table
-     * for a pharma_id that doesn't exist there). The FK lives on THIS table,
-     * so the correct relation is belongsTo.
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');

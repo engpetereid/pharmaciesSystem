@@ -14,7 +14,8 @@ class Category extends Model
     use HasFactory;
     protected $table = 'categories';
     protected $fillable =[
-        'name',
+        'id',
+        'name'
     ];
 
     public function drugs()

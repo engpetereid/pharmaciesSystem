@@ -89,6 +89,9 @@ class PharmaciesTest extends TestCase
             'status' => true,
             'message' => 'Pharmacy deleted successfully',
         ]);
+        $this->assertDatabaseMissing('pharmacies', [
+            'id' => $pharmacy->id,
+        ]);
     }
     public function test_pharmacy_validation()
     {
@@ -96,6 +99,7 @@ class PharmaciesTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['name']);
+
 
     }
 }

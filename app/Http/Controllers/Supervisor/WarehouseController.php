@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Drug;
 use App\Models\Order;
 use App\Models\Warehouse;
-use App\Services\Supervisor\WarehouseService;
+use App\Services\Supervisor\implemantation\WarehouseService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 

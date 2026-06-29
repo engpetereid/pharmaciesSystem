@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\User\CreateUserRequest;
 use App\Http\Requests\User\EditUserRequest;
 use App\Models\User;
-use App\Services\Admin\UserService;
+use App\Services\Admin\Implementation\UserService;
 
 class UsersController extends Controller
 {

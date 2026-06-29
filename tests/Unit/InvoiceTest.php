@@ -2,12 +2,13 @@
 
 namespace Tests\Unit;
 
+use App\DTOs\SaveInvoiceDTO;
+use App\DTOs\SaveInvoiceItemDTO;
 use App\Models\Drug;
-use App\Models\Invoice;
 use App\Models\Pharma;
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Services\Supervisor\InvoiceService;
+use App\Services\Admin\IInvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,7 +18,7 @@ class InvoiceTest extends TestCase
 
     public function test_create_invoice(): void
     {
-        $service = new InvoiceService();
+        $service = app(IInvoiceService::class);
         $user    = User::factory()->create();
         $pharma  = Pharma::factory()->create(['user_id' => $user->id]);
 
@@ -28,29 +29,37 @@ class InvoiceTest extends TestCase
             'pharmacy_id' => $pharma->id,
             'drug_id'     => $drug->id,
             'quantity'    => 10,
-            'minimum'     => 2,
+            'minimum_quantity'     => 2,
         ]);
 
-        $invoice = $service->create([
-            'pharmacy_id' => $pharma->id,
-            'date'        => now()->format('Y-m-d'),
-            'items'       => [
-                ['drug_id' => $drug->id, 'quantity' => 1],
-            ],
-        ]);
+        $dto = new SaveInvoiceDTO(
+            pharmacy_id: $pharma->id,
+            price: 0, // السيرفيس هتحسبه
+            date: now(),
+            items: [
+                new SaveInvoiceItemDTO(drug_id: $drug->id, quantity: 1, unit_price: 100)
+            ]
+        );
+
+        // 2. استخدام دالة store
+        $invoice = $service->store($dto);
 
         $this->assertDatabaseHas('invoices', [
             'id' => $invoice->id,
         ]);
-        $this->assertDatabaseHas('invoice_details', [
+        $this->assertDatabaseHas('invoice_items', [
             'invoice_id' => $invoice->id,
             'drug_id'    => $drug->id,
+        ]);
+        $this->assertDatabaseHas('warehouses', [
+            'id'       => $warehouse->id,
+            'quantity' => 9,
         ]);
     }
 
     public function test_update_invoice(): void
     {
-        $service = new InvoiceService();
+        $service = app(IInvoiceService::class);
         $user    = User::factory()->create();
         $pharma  = Pharma::factory()->create(['user_id' => $user->id]);
 
@@ -61,40 +70,41 @@ class InvoiceTest extends TestCase
             'pharmacy_id' => $pharma->id,
             'drug_id'     => $drug->id,
             'quantity'    => 10,
-            'minimum'     => 2,
+            'minimum_quantity'     => 2,
         ]);
 
-        $invoice = $service->create([
-            'pharmacy_id' => $pharma->id,
-            'date'        => now()->format('Y-m-d'),
-            'items'       => [
-                ['drug_id' => $drug->id, 'quantity' => 1],
-            ],
-        ]);
+        $oldDto = new SaveInvoiceDTO(
+            pharmacy_id: $pharma->id, price: 0, date: now(),
+            items: [new SaveInvoiceItemDTO(drug_id: $drug->id, quantity: 1, unit_price: 100)]
+        );
+        $invoice = $service->store($oldDto);
 
-        // Fix: service now accepts an Invoice model instead of int $id.
-        // Fetch the fresh model (so items relation is not stale) and pass it.
         $invoice->refresh();
-        $service->update($invoice, [
-            'date'  => now()->format('Y-m-d'),
-            'items' => [
-                ['drug_id' => $drug->id, 'quantity' => 2],
-            ],
-        ]);
 
-        $this->assertDatabaseHas('invoices', [
-            'id' => $invoice->id,
-        ]);
-        $this->assertDatabaseHas('invoice_details', [
+
+        $newDto = new SaveInvoiceDTO(
+            pharmacy_id: $pharma->id, price: 0, date: now(),
+            items: [new SaveInvoiceItemDTO(drug_id: $drug->id, quantity: 2, unit_price: 100)]
+        );
+
+        $service->update($invoice, $newDto);
+
+
+        $this->assertDatabaseHas('invoice_items', [
             'invoice_id' => $invoice->id,
             'drug_id'    => $drug->id,
             'quantity'   => 2,
+        ]);
+
+        $this->assertDatabaseHas('warehouses', [
+            'id'       => $warehouse->id,
+            'quantity' => 8,
         ]);
     }
 
     public function test_delete_invoice(): void
     {
-        $service = new InvoiceService();
+        $service = app(IInvoiceService::class);
         $user    = User::factory()->create();
         $pharma  = Pharma::factory()->create(['user_id' => $user->id]);
 
@@ -105,23 +115,24 @@ class InvoiceTest extends TestCase
             'pharmacy_id' => $pharma->id,
             'drug_id'     => $drug->id,
             'quantity'    => 10,
-            'minimum'     => 2,
+            'minimum_quantity'     => 2,
         ]);
 
-        $invoice = $service->create([
-            'pharmacy_id' => $pharma->id,
-            'date'        => now()->format('Y-m-d'),
-            'items'       => [
-                ['drug_id' => $drug->id, 'quantity' => 1],
-            ],
-        ]);
+        $dto = new SaveInvoiceDTO(
+            pharmacy_id: $pharma->id, price: 0, date: now(),
+            items: [new SaveInvoiceItemDTO(drug_id: $drug->id, quantity: 3, unit_price: 100)]
+        );
+        $invoice = $service->store($dto);
 
-        // Fix: service now accepts an Invoice model instead of int $id.
         $invoice->refresh();
         $service->delete($invoice);
 
         $this->assertDatabaseMissing('invoices', [
             'id' => $invoice->id,
+        ]);
+        $this->assertDatabaseHas('warehouses', [
+            'id'       => $warehouse->id,
+            'quantity' => 10,
         ]);
     }
 }

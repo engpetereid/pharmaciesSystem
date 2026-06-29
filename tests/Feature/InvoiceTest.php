@@ -2,14 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Models\Category;
 use App\Models\Drug;
+use App\Models\Invoice;
 use App\Models\Pharma;
 use App\Models\User;
 use App\Models\Warehouse;
-use Tests\TestCase;
-use App\Models\Invoice;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class InvoiceTest extends TestCase
 {
@@ -49,7 +48,7 @@ class InvoiceTest extends TestCase
             'pharmacy_id' => $pharmacy->id,
             'drug_id' => $drug->id,
             'quantity' => 10,
-            'minimum' => 2
+            'minimum_quantity' => 2
         ]);
         $data = [
             'date' => now()->format('Y-m-d') ,
@@ -58,7 +57,7 @@ class InvoiceTest extends TestCase
                 [
                     'drug_id'=>$drug->id,
                     'quantity'=>1,
-                    'price'=>$drug->price,
+                    'unit_price'=>$drug->price,
                 ]
             ]
         ];
@@ -84,27 +83,30 @@ class InvoiceTest extends TestCase
             'pharmacy_id' => $pharmacy->id,
             'drug_id' => $drug->id,
             'quantity' => 10,
-            'minimum' => 2
+            'minimum_quantity' => 2
         ]);
-        $invoice = app(\App\Services\Supervisor\InvoiceService::class)->create([
-            'pharmacy_id' => $pharmacy->id,
-            'date' => now(),
-            'items' => [
-                [
-                    'drug_id' => $drug->id,
-                    'quantity' => 1
-                ]
+        $dto = new \App\DTOs\SaveInvoiceDTO(
+            pharmacy_id: $pharmacy->id,
+            price: 0,
+            date: now(),
+            items: [
+                new \App\DTOs\SaveInvoiceItemDTO(
+                    drug_id: $drug->id,
+                    quantity: 1,
+                    unit_price: $drug->price
+                )
             ]
-        ]);
+        );
+        $invoice = app(\App\Services\Admin\IInvoiceService::class)->store($dto);
 
         $data = [
             'date' => now()->format('Y-m-d') ,
             'pharmacy_id' => $pharmacy->id,
             'items'=>[
                 [
-                    'drug_id'=>$drug->id,
-                    'quantity'=>1,
-                    'price'=>$drug->price,
+                    'drug_id' => $drug->id,
+                    'quantity' => 3,
+                    'unit_price' => $drug->price,
                 ]
             ]
         ];
@@ -122,14 +124,47 @@ class InvoiceTest extends TestCase
             'id' => $invoice->id,
             'pharmacy_id' => $pharmacy->id,
         ]);
+
+        $this->assertDatabaseHas('warehouses', [
+            'id' => $warehouse->id,
+            'quantity' => 7,
+        ]);
     }
     public function test_delete_invoice(){
-        $invoice = Invoice::factory()->create();
+        $pharmacy = Pharma::factory()->create();
+        $drug = Drug::factory()->create();
+        $warehouse = Warehouse::factory()->create([
+            'pharmacy_id' => $pharmacy->id,
+            'drug_id' => $drug->id,
+            'quantity' => 10,
+            'minimum_quantity' => 2
+        ]);
+
+        $dto = new \App\DTOs\SaveInvoiceDTO(
+            pharmacy_id: $pharmacy->id,
+            price: 0,
+            date: now(),
+            items: [
+                new \App\DTOs\SaveInvoiceItemDTO(
+                    drug_id: $drug->id,
+                    quantity: 2,
+                    unit_price: $drug->price
+                )
+            ]
+        );
+        $invoice = app(\App\Services\Admin\IInvoiceService::class)->store($dto);
+
         $response = $this->deleteJson('/api/v1/invoices/'.$invoice->id);
+
         $response->assertStatus(200);
-        $response->assertJson([
-            'status' => true,
-            'message' => 'Invoice deleted successfully',
+
+        $this->assertDatabaseMissing('invoices', [
+            'id' => $invoice->id,
+        ]);
+
+        $this->assertDatabaseHas('warehouses', [
+            'id' => $warehouse->id,
+            'quantity' => 10,
         ]);
     }
     public function test_invoice_validation()

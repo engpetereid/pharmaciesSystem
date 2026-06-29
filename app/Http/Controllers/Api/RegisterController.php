@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\SaveUserDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\CreateUserRequest;
 use App\Http\Requests\User\LoginUserRequest;
-use App\Services\Admin\UserService;
+use App\Services\Admin\Implementation\UserService;
 
 
 class RegisterController extends Controller
@@ -19,7 +20,8 @@ class RegisterController extends Controller
 
     public function register(CreateUserRequest $request)
     {
-        $user  = $this->userService->create($request->validated());
+        $dto = SaveUserDTO::fromRequest($request);
+        $user  = $this->userService->store($dto);
         $token = $user->createToken(config('app.name'))->plainTextToken;
 
         return response()->json([

@@ -2,13 +2,23 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\SaveCategoryDTO;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Category\CreateCategoryRequest;
+use App\Http\Requests\Category\SaveNotificationRequest;
+use App\Http\Requests\Category\EditCategoryRequest;
 use App\Models\Category;
-use App\Services\Admin\CategoryService;
+use App\Services\Admin\ICategoryService;
+use App\Services\Admin\Implementation\CategoryService;
 use Illuminate\Http\Request;
 
 class ApiCategoriesController extends Controller
 {
+    protected $categoryService;
+
+    public function __construct(ICategoryService $categoryService){
+        $this->categoryService = $categoryService;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -17,21 +27,18 @@ class ApiCategoriesController extends Controller
         //
         return response()->json([
             'status' => true,
-            'data' => Category::all()
+            'data' => $this->categoryService->all()
         ]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request ,CategoryService $categoryService )
+    public function store(CreateCategoryRequest $request)
     {
         //
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255|unique:categories,name'
-        ]);
-        $category = $categoryService->create($validatedData);
-
+        $dto=SaveCategoryDTO::fromRequest($request);
+        $category=$this->categoryService->store($dto);
         return response()->json([
             'status' => true,
             'data' => $category,
@@ -45,7 +52,7 @@ class ApiCategoriesController extends Controller
     public function show(string $id)
     {
         //
-        $category=Category::findOrFail($id);
+        $category = $this -> categoryService->findById($id);
         return response()->json([
             'status' => true,
             'data' => $category,
@@ -55,27 +62,25 @@ class ApiCategoriesController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, int $id, CategoryService $categoryService)
+    public function update(EditCategoryRequest $request, Category $category)
     {
         //
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255|unique:categories,name,'.$id
-        ]);
-        $category = $categoryService->update($id, $validatedData);
+        $dto=SaveCategoryDTO::fromRequest($request);
+        $updatedCategory=$this->categoryService->update($category, $dto);
 
         return response()->json([
             'status' => true,
-            'data' => $category,
+            'data' => $updatedCategory,
         ]);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id,CategoryService $categoryService)
+    public function destroy(Category $category)
     {
         //
-        $categoryService->delete($id);
+        $this->categoryService->delete($category);
         return response()->json([
             'status' => true,
             'message' => 'Category deleted successfully'

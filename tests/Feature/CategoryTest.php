@@ -5,32 +5,26 @@ namespace Tests\Feature;
 use App\Models\User;
 use Tests\TestCase;
 use App\Models\Category;
+use Laravel\Sanctum\Sanctum;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class CategoryTest extends TestCase
 {
     use RefreshDatabase;
-
-    protected function setUp(): void
+    private function loginAsAdmin(): void
     {
-        parent::setUp();
-
-        $this->actingAs(
-            User::factory()->create([
-                'role' => 'admin'
-            ]),
-            'sanctum'
+        Sanctum::actingAs(
+            User::factory()->create(['role' => 'admin'])
         );
     }
+
     public function test_get_categories()
     {
-        // Arrange
+        $this->loginAsAdmin();
         Category::factory()->count(3)->create();
 
-        // Act
-        $response = $this->getJson('/api/v1/categories');
+        $response = $this->getJson(route('api.categories.index'));
 
-        // Assert
         $response->assertStatus(200)
             ->assertJson([
                 'status' => true
@@ -39,11 +33,12 @@ class CategoryTest extends TestCase
     }
     public function test_create_category()
     {
+        $this->loginAsAdmin();
         $data = [
             'name' => 'Test Category'
         ];
 
-        $response = $this->postJson('/api/v1/categories', $data);
+        $response = $this->postJson(route('api.categories.store'), $data);
 
         $response->assertStatus(201)
             ->assertJson([
@@ -56,6 +51,7 @@ class CategoryTest extends TestCase
     }
     public function test_update_category()
     {
+        $this->loginAsAdmin();
         // Arrange
         $category = Category::factory()->create();
 
@@ -64,7 +60,7 @@ class CategoryTest extends TestCase
         ];
 
         // Act
-        $response = $this->putJson('/api/v1/categories/' . $category->id, $data);
+        $response = $this->putJson(route('api.categories.update' , $category), $data);
 
         // Assert
         $response->assertStatus(200)
@@ -78,8 +74,9 @@ class CategoryTest extends TestCase
         ]);
     }
     public function test_delete_category(){
+        $this->loginAsAdmin();
         $category = Category::factory()->create();
-        $response = $this->deleteJson('/api/v1/categories/'.$category->id);
+        $response = $this->deleteJson(route('api.categories.destroy',$category->id));
         $response->assertStatus(200);
         $this->assertDatabaseMissing('categories', [
             'id' => $category->id,
@@ -87,10 +84,36 @@ class CategoryTest extends TestCase
     }
     public function test_category_validation()
     {
-        $response = $this->postJson('/api/v1/categories', []);
+        $this->loginAsAdmin();
+        $response = $this->postJson(route('api.categories.store'), []);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['name']);
 
+    }
+    public function test_guest_cannot_get_categories()
+    {
+
+        $response = $this->getJson(
+            route('api.categories.index')
+        );
+
+        $response->assertUnauthorized();
+    }
+    public function test_non_admin_cannot_delete_category()
+    {
+        Sanctum::actingAs(
+            User::factory()->create([
+                'role' => 'supervisor'
+            ])
+        );
+
+        $category = Category::factory()->create();
+
+        $response = $this->deleteJson(
+            route('api.categories.destroy', $category)
+        );
+
+        $response->assertForbidden();
     }
 }

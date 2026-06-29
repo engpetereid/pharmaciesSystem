@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 /**
  * @extends Factory<Warehouse>
  */
-class warehouseFactory extends Factory
+class WarehouseFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -24,7 +24,7 @@ class warehouseFactory extends Factory
             'pharmacy_id'=>Pharma::factory()->create(),
             'drug_id'=>Drug::factory()->create(),
             'quantity'=>$this->faker->numberBetween(1,100),
-            'minimum'=>$this->faker->numberBetween(1,100),
+            'minimum_quantity'=>$this->faker->numberBetween(1,100),
         ];
     }
 }

@@ -9,10 +9,7 @@ use App\Models\Warehouse;
 
 class SupervisorDashboard extends Controller
 {
-    /**
-     * Fix Issue 14: pass real per-pharmacy metrics to the view instead of an
-     * empty view that renders blank / hardcoded-zero dashboard cards.
-     */
+
     public function index()
     {
         $pharmacyId = auth()->user()->pharmacy?->id;
@@ -21,7 +18,7 @@ class SupervisorDashboard extends Controller
         return view('supervisor.dashboard', [
             'stockCount'    => Warehouse::where('pharmacy_id', $pharmacyId)->count(),
             'lowStockCount' => Warehouse::where('pharmacy_id', $pharmacyId)
-                                  ->whereColumn('quantity', '<', 'minimum')
+                                  ->whereColumn('quantity', '<', 'minimum_quantity')
                                   ->count(),
             'pendingOrders' => Order::where('pharmacy_id', $pharmacyId)
                                   ->where('accepted', false)

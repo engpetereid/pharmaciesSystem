@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\StockNotification;
+use App\Models\Notification;
 
 class NotificationsController extends Controller
 {
 
     public function index()
     {
-        $notifications = StockNotification::with(['pharmacy', 'drug'])
+        $notifications = Notification::with(['pharmacy', 'drug'])
             ->latest()
             ->paginate(50);
 

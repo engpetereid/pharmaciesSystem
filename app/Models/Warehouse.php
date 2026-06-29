@@ -14,14 +14,14 @@ class Warehouse extends Model
         'quantity',
         'pharmacy_id',
         'drug_id',
-        'minimum',
+        'minimum_quantity',
     ];
 
     protected function casts(): array
     {
         return [
             'quantity' => 'integer',
-            'minimum'  => 'integer',
+            'minimum_quantity'  => 'integer',
         ];
     }
 

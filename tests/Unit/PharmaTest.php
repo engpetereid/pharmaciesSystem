@@ -2,60 +2,95 @@
 
 namespace Tests\Unit;
 
-use App\Models\User;
-use Tests\TestCase;
-use App\Services\Admin\PharmaService;
+use App\DTOs\SavePharmaDTO;
 use App\Models\Pharma;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Repositories\IPharmaRepository;
+use App\Services\Admin\IPharmaService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Mockery\MockInterface;
+use Tests\TestCase;
 
 class PharmaTest extends TestCase
 {
     /**
      * A basic unit test example.
      */
-    use RefreshDatabase;
-    public function test_create_pharma(): void
+    public function test_create_Pharma_using_mocking()
     {
-        $service = new PharmaService();
-        $user = User::factory()->create();
-        $service->create([
-            'name'=>'Pharma',
-            'user_id'=>$user->id,
+        $dto = new SavePharmaDTO(name: 'pharma',user_id: 1);
+
+        $fakePharma = new Pharma([
+            'name' => 'pharma',
+            'user_id' => 1,
         ]);
-        $this->assertDatabaseHas('pharmacies',[
-            'name'=>'Pharma',
-            'user_id'=>$user->id,
-        ]);
+
+        $this->mock(IPharmaRepository::class, function (MockInterface $mock) use ($dto, $fakePharma) {
+            $mock->shouldReceive('store')
+                ->once()
+                ->with($dto)
+                ->andReturn($fakePharma);
+        });
+
+        $service = app(IPharmaService::class);
+        $result = $service->store($dto);
+
+        $this->assertEquals('pharma', $result->name);
     }
-    public function test_update_pharma(): void
+    public function test_update_Pharma()
     {
-        $service = new PharmaService();
-        $user = User::factory()->create();
-        $Pharma = $service->create([
-            'name'=>'Pharma',
-            'user_id'=>$user->id,
+        $dto = new SavePharmaDTO(name: 'updated_pharma',user_id: 1);
 
-        ]);
-        $service ->update($Pharma->id,[
-            'name' => 'update Pharma'
-        ]);
-        $this->assertDatabaseHas('pharmacies',[
-            'name'=>'update Pharma',
+        $Pharma = new Pharma([
+            'name' => 'pharma',
+            'user_id' => 1,
         ]);
 
+        $newPharma = new Pharma([
+            'name' => 'updated_pharma',
+            'user_id' => 1,
+        ]);
+        $this->mock(IPharmaRepository::class, function (MockInterface $mock) use ($dto, $Pharma, $newPharma) {
+            $mock->shouldReceive('update')
+                ->once()
+                ->with($Pharma,$dto)
+                ->andReturn($newPharma);
+        });
+        $service = app(IPharmaService::class);
+        $result = $service->update($Pharma,$dto);
+
+        $this->assertEquals('updated_pharma', $result->name);
     }
-    public function test_delete_pharma(): void
+    public function test_delete_Pharma()
     {
-        $service = new PharmaService();
-        $user = User::factory()->create();
-        $Pharma = $service->create([
-            'name'=>'Pharma',
-            'user_id'=>$user->id,
+        $fakePharma = new Pharma([
+            'name' => 'Panadol',
+            'user_id' => 1,
+        ]);
+        $this->mock(IPharmaRepository::class, function (MockInterface $mock) use ($fakePharma) {
+            $mock->shouldReceive('delete')
+                ->once()
+                ->with($fakePharma)
+                ->andReturn(true);
+        });
+        $service = app(IPharmaService::class);
+        $result = $service->delete($fakePharma);
+        $this->assertTrue($result);
+    }
+    public function test_find_Pharma_by_id_throws_exception_if_not_found()
+    {
+        $invalidId = 999;
 
-        ]);
-        $service ->delete($Pharma->id);
-        $this->assertDatabaseMissing('pharmacies',[
-            'name'=>'Pharma',
-        ]);
+        $this->mock(IPharmaRepository::class, function (MockInterface $mock) use ($invalidId) {
+            $mock->shouldReceive('findById')
+                ->once()
+                ->with($invalidId)
+                ->andThrow(new ModelNotFoundException('Pharma not found'));
+        });
+
+        $this->expectException(ModelNotFoundException::class);
+        $this->expectExceptionMessage('Pharma not found');
+
+        $service = app(IPharmaService::class);
+        $service->findById($invalidId);
     }
 }

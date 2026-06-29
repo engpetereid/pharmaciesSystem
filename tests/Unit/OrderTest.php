@@ -6,9 +6,10 @@ use App\Models\Drug;
 use App\Models\Order;
 use App\Models\Pharma;
 use App\Models\Warehouse;
-use App\Services\Admin\OrderService;
-use Tests\TestCase;
+use App\Services\Admin\Implementation\OrderService;
+use App\Services\Admin\IOrderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class OrderTest extends TestCase
 {
@@ -30,7 +31,7 @@ class OrderTest extends TestCase
             'drug_id'=>$drug->id,
             'quantity'=>50,
         ]);
-        $service = new OrderService();
+        $service = app(IOrderService::class);
         $service->accept($order->id);
         $this->assertDatabaseHas('warehouses',[
             'pharmacy_id'=>$pharma->id,
@@ -53,7 +54,7 @@ class OrderTest extends TestCase
             'drug_id'=>$drug->id,
             'quantity'=>50,
         ]);
-        $service = new OrderService();
+        $service = app(IOrderService::class);
         $service->delete($order->id);
         $this->assertDatabaseMissing('orders',[
             'id'=>$order->id,

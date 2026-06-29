@@ -2,21 +2,25 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\DTOs\SaveCategoryDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Category\CreateCategoryRequest;
 use App\Http\Requests\Category\EditCategoryRequest;
 use App\Models\Category;
-use App\Services\Admin\CategoryService;
+use App\Services\Admin\ICategoryService;
+use App\Services\Admin\Implementation\CategoryService;
 
 class CategoriesController extends Controller
 {
-    /**
-     * Fix Issue 8: replaced Category::all() with paginate(25) to prevent
-     * full-table loads as the dataset grows.
-     */
+    protected ICategoryService $categoryService;
+
+    public function __construct(ICategoryService $categoryService){
+        $this->categoryService = $categoryService;
+    }
+
     public function index()
     {
-        $categories = Category::withCount('drugs')->paginate(25);
+        $categories = $this->categoryService->paginate();
         return view('admin.categories.index', compact('categories'));
     }
 
@@ -25,36 +29,43 @@ class CategoriesController extends Controller
         return view('admin.categories.create');
     }
 
-    public function store(CreateCategoryRequest $request, CategoryService $categoryService)
+    public function store(CreateCategoryRequest $request)
     {
-        $categoryService->create($request->validated());
+        $dto = SaveCategoryDTO::fromRequest($request);
+        $this->categoryService->store($dto);
         return redirect()->route('admin.categories.index')
             ->with('success', 'Category created successfully.');
     }
 
     public function show(int $id)
     {
-        $category = Category::findOrFail($id);
+        $category = $this->categoryService->findById($id);
         return view('admin.categories.show', compact('category'));
     }
 
     public function edit(int $id)
     {
-        $category = Category::findOrFail($id);
+        $category = $this->categoryService->findById($id);
         return view('admin.categories.edit', compact('category'));
     }
 
-    public function update(EditCategoryRequest $request, int $id, CategoryService $categoryService)
+    public function update(EditCategoryRequest $request, Category $category)
     {
-        $categoryService->update($id, $request->validated());
-        return redirect()->route('admin.categories.index')
+        $dto = SaveCategoryDTO::fromRequest($request);
+
+        $this->categoryService->update($category, $dto);
+
+        return redirect()
+            ->route('admin.categories.index')
             ->with('success', 'Category updated successfully.');
     }
 
-    public function destroy(int $id, CategoryService $categoryService)
+    public function destroy(Category $category)
     {
-        $categoryService->delete($id);
-        return redirect()->route('admin.categories.index')
+        $this->categoryService->delete($category);
+
+        return redirect()
+            ->route('admin.categories.index')
             ->with('success', 'Category deleted successfully.');
     }
 }

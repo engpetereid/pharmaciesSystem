@@ -25,7 +25,7 @@ class EditUserRequest extends FormRequest
         $id = $this->route('user');
         return [
             'name' => 'required|string|max:100',
-            'email' => 'required|string|email|max:100|unique:users,email,'.$id,
+            'email' => 'required|email|unique:users,email,' . $this->route('user')->id,
             'password' => 'nullable|string|min:8',
             'role' => 'required|in:admin,supervisor',
         ];

@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Pharma;
-use App\Models\StockNotification;
+use App\Models\Notification;
 use App\Models\User;
 
 class AdminDashboard extends Controller
@@ -22,7 +22,7 @@ class AdminDashboard extends Controller
             'userCount'           => User::count(),
             'pendingOrderCount'   => Order::where('accepted', false)->count(),
             'todayInvoiceCount'   => Invoice::whereDate('created_at', today())->count(),
-            'recentNotifications' => StockNotification::with(['pharmacy', 'drug'])
+            'recentNotifications' => Notification::with(['pharmacy', 'drug'])
                                         ->latest()
                                         ->take(5)
                                         ->get(),

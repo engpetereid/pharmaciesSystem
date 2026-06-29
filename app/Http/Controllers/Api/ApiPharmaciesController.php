@@ -2,20 +2,27 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\SavePharmaDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Pharma\CreatePharmaRequest;
 use App\Http\Requests\Pharma\EditPharmaRequest;
 use App\Http\Requests\Pharma\StoreDrugsRequest;
 use App\Models\Pharma;
 use App\Models\Warehouse;
-use App\Services\Admin\PharmaService;
+use App\Services\Admin\IDrugService;
+use App\Services\Admin\IPharmaService;
+use App\Services\Admin\IWarehouseService;
 
 class ApiPharmaciesController extends Controller
 {
+public function __construct(
+    protected IPharmaService $pharmaService,
+    protected IWarehouseService $warehouseService,
+){}
 
     public function index()
     {
-        $pharmacies = Pharma::paginate(20);
+        $pharmacies = $this->pharmaService->paginate();
 
         return response()->json([
             'status' => true,
@@ -23,9 +30,10 @@ class ApiPharmaciesController extends Controller
         ], 200);
     }
 
-    public function store(CreatePharmaRequest $request, PharmaService $pharmaService)
+    public function store(CreatePharmaRequest $request)
     {
-        $pharma = $pharmaService->create($request->validated());
+        $dto= SavePharmaDTO::fromRequest($request);
+        $pharma = $this->pharmaService->store($dto);
 
         return response()->json([
             'status' => true,
@@ -36,10 +44,8 @@ class ApiPharmaciesController extends Controller
 
     public function show(int $id)
     {
-        $pharmacy = Pharma::findOrFail($id);
-        $items    = Warehouse::with('drug')
-            ->where('pharmacy_id', $id)
-            ->get();
+        $pharmacy = $this->pharmaService->findById($id);
+        $items = $this->warehouseService->getItemsByPharma($pharmacy);
 
         return response()->json([
             'status' => true,
@@ -48,19 +54,20 @@ class ApiPharmaciesController extends Controller
         ], 200);
     }
 
-    public function update(EditPharmaRequest $request, int $id, PharmaService $pharmaService)
+    public function update(EditPharmaRequest $request,pharma $pharmacy)
     {
-        $pharma = $pharmaService->update($id, $request->validated());
+        $dto= SavePharmaDTO::fromRequest($request);
+        $pharmacy = $this->pharmaService->update($pharmacy,$dto);
 
         return response()->json([
             'status' => true,
-            'data'   => $pharma,
+            'data'   => $pharmacy,
         ], 200);
     }
 
-    public function destroy(int $id, PharmaService $pharmaService)
+    public function destroy(Pharma $pharmacy)
     {
-        $pharmaService->delete($id);
+        $this->pharmaService->delete($pharmacy);
 
         return response()->json([
             'status'  => true,
@@ -68,9 +75,11 @@ class ApiPharmaciesController extends Controller
         ], 200);
     }
 
-    public function storeDrugs(StoreDrugsRequest $request, PharmaService $service)
+    public function storeDrugs(Pharma $pharma,StoreDrugsRequest $request)
     {
-        $service->addDrugsToPharmacy($request->validated());
+        $data = $request->validated();
+        foreach ($request->drug_id as $drug_id)
+            $this->pharmaService->addMultipleDrugsToPharmacy($pharma,$drug_id,$data['quantity']);
 
         return response()->json([
             'status'  => true,

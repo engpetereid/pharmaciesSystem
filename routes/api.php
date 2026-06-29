@@ -34,19 +34,19 @@ Route::prefix('v1')->group(function () {
 
         // Admin-only API routes
         Route::middleware('admin')->group(function () {
-            Route::resource('drugs',      ApiDrugsController::class);
-            Route::resource('users',      ApiUsersController::class);
-            Route::resource('categories', ApiCategoriesController::class);
-            Route::resource('pharmacies', ApiPharmaciesController::class);
-            Route::post('pharmacies/store-drugs', [ApiPharmaciesController::class, 'storeDrugs']);
-            Route::get('orders',                  [ApiOrdersController::class, 'index']);
-            Route::patch('orders/{id}/accept',    [ApiOrdersController::class, 'acceptOrder']);
-            Route::resource('invoices', ApiInvoiceController::class);
+            Route::resource('drugs',      ApiDrugsController::class)->names('api.drugs');
+            Route::resource('users',      ApiUsersController::class)->names('api.users');
+            Route::resource('categories', ApiCategoriesController::class)->names('api.categories');
+            Route::resource('pharmacies', ApiPharmaciesController::class)->names('api.pharmacies');
+            Route::post('pharmacies/store-drugs', [ApiPharmaciesController::class, 'storeDrugs'])->name('api.pharmacies.store-drugs');
+            Route::get('orders',                  [ApiOrdersController::class, 'index'])->name('api.orders.index');
+            Route::patch('orders/{id}/accept',    [ApiOrdersController::class, 'acceptOrder'])->name('api.orders.accept');
+            Route::resource('invoices', ApiInvoiceController::class)->names('api.invoices');
         });
 
         // Supervisor-only API routes
         Route::middleware('supervisor')->group(function () {
-            Route::resource('supervisor-invoices', ApiSupervisorInvoiceController::class);
+            Route::resource('supervisor-invoices', ApiSupervisorInvoiceController::class)->names('api.supervisor-invoices');
         });
     });
 });

@@ -10,7 +10,7 @@ use App\Models\Drug;
 use App\Models\Pharma;
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Services\Admin\PharmaService;
+use App\Services\Admin\Implementation\PharmaService;
 
 class PharmaciesController extends Controller
 {

@@ -2,22 +2,27 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\SavePharmaDTO;
+use App\DTOs\SaveUserDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\CreateUserRequest;
 use App\Http\Requests\User\EditUserRequest;
 use App\Models\User;
-use App\Services\Admin\UserService;
-use Illuminate\Http\Request;
+use App\Services\Admin\Implementation\UserService;
+use App\Services\Admin\IUserService;
 
 class ApiUsersController extends Controller
 {
+    public function __construct(
+        protected IUserService $userService,
+    ){}
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
-        $users=User::all();
+        $users=$this->userService->all();
         return response()->json([
             'status'=>true,
             'data'=>$users,
@@ -27,10 +32,11 @@ class ApiUsersController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(CreateUserRequest $request,UserService $userService)
+    public function store(CreateUserRequest $request)
     {
         //
-        $user = $userService->create($request->validated());
+        $dto = SaveUserDTO::fromRequest($request);
+        $user = $this->userService->store($dto);
         return response()->json([
             'status' => true,
             'data' => $user,
@@ -43,7 +49,7 @@ class ApiUsersController extends Controller
     public function show(string $id)
     {
         //
-        $user=User::findOrFail($id);
+        $user=$this->userService->findById($id);
         return response()->json([
             'status' => true,
             'data' => $user,
@@ -54,10 +60,11 @@ class ApiUsersController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(EditUserRequest $request, string $id , UserService $userService)
+    public function update(EditUserRequest $request, User $user )
     {
         //
-        $user = $userService->update($id, $request->validated());
+        $dto = SaveUserDTO::fromRequest($request);
+        $user = $this->userService->update($user,$dto);
         return response()->json([
             'status' => true,
             'data' => $user,
@@ -67,9 +74,9 @@ class ApiUsersController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id , UserService $userService)
+    public function destroy(User $user)
     {
-        $userService->delete($id);
+        $this->userService->delete($user);
         return response()->json([
             'status' => true,
             'data' => 'user deleted successfully',

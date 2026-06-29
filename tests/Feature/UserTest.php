@@ -65,12 +65,12 @@ class UserTest extends TestCase
             'name' => 'Updated User',
             'email' => 'update@gmail.com',
             'password' => 'password',
+            'password_confirmation' => 'password',
             'role' => 'admin',
         ];
 
         // Act
         $response = $this->putJson('/api/v1/users/' . $user->id, $data);
-
         // Assert
         $response->assertStatus(200)
             ->assertJson([
@@ -89,6 +89,9 @@ class UserTest extends TestCase
         $response->assertJson([
             'status' => true,
             'data' => 'user deleted successfully',
+        ]);
+        $this->assertDatabaseMissing('users', [
+            'id' => $user->id,
         ]);
     }
     public function test_user_validation()
